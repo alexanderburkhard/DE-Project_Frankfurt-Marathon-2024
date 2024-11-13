@@ -90,7 +90,7 @@ def iterate_workout(producer, topic, data_points):
         producer.send(topic, value=data)
         producer.flush()
 
-file = 'FFM_Marathon_2024.gpx'
+file = '/data-producer/gpx_files/FFM_Marathon_2024.gpx'
 
 if __name__ == "__main__":
     producer = KafkaProducer(
