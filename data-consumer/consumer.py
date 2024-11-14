@@ -20,7 +20,7 @@ write_api = client.write_api(write_options=SYNCHRONOUS)
 def consume_and_process():
     consumer = KafkaConsumer(
         'sensor-data',
-        bootstrap_servers='kafka:9092',
+        bootstrap_servers=['kafka1:9092','kafka2:9093'],
         auto_offset_reset='earliest',
         value_deserializer=lambda m: json.loads(m.decode('utf-8'))
     )
@@ -45,4 +45,3 @@ def consume_and_process():
 
 if __name__ == '__main__':
     consume_and_process()
-    

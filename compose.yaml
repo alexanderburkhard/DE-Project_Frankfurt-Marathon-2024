@@ -5,7 +5,7 @@ services:
    environment:
       ZOOKEEPER_CLIENT_PORT: 2181
 
-  kafka:
+  kafka1:
     image: confluentinc/cp-kafka:latest
     container_name: kafka-broker-1
     depends_on:
@@ -13,38 +13,48 @@ services:
     environment:
       KAFKA_BROKER_ID: 1
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
-      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka1:9092
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 2
+      KAFKA_DEFAULT_REPLICATION_FACTOR: 2
+      KAFKA_MIN_INSYNC_REPLICAS: 1
       KAFKA_LOG_RETENTION_MS: 10000
-    
-  # kafka:
-  #   image: confluentinc/cp-kafka:latest
-  #   container_name: kafka-broker-1
-  #   depends_on:
-  #      - zookeeper
-  #   environment:
-  #     KAFKA_BROKER_ID: 1
-  #     KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
-  #     KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
-  #     KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
-  #     KAFKA_LOG_RETENTION_MS: 10000
-  
-  akhq:
-    image: tchiotludo/akhq
-    container_name: akhq
     ports:
-      - "8080:8080"
-    environment:
-      AKHQ_CONFIGURATION: |
-        akhq:
-          server:
-            access-log: true
-          connections:
-            kafka-cluster:
-              properties:
-                bootstrap.servers: "kafka:9092"
+      - "9092:9092"
+    
+  kafka2:
+    image: confluentinc/cp-kafka:latest
+    container_name: kafka-broker-2
     depends_on:
-      - kafka
+       - zookeeper
+    environment:
+      KAFKA_BROKER_ID: 2
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka2:9093
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9093
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 2
+      KAFKA_DEFAULT_REPLICATION_FACTOR: 2
+      KAFKA_MIN_INSYNC_REPLICAS: 1
+      KAFKA_LOG_RETENTION_MS: 10000
+    ports:
+      - "9093:9093"
+  
+  # akhq:
+  #   image: tchiotludo/akhq
+  #   container_name: akhq
+  #   ports:
+  #     - "8080:8080"
+  #   environment:
+  #     AKHQ_CONFIGURATION: |
+  #       akhq:
+  #         server:
+  #           access-log: true
+  #         connections:
+  #           kafka-cluster:
+  #             properties:
+  #               bootstrap.servers: "kafka:9092"
+  #   depends_on:
+  #     - kafka
 
   data-producer:
     build: 
@@ -52,7 +62,8 @@ services:
       dockerfile: ./Dockerfile
     container_name: producer
     depends_on:
-       - kafka
+       - kafka1
+       - kafka2
     volumes:
       - ./data-producer/gpx_files:/data-producer/gpx_files
 
@@ -60,9 +71,10 @@ services:
     build: ./data-consumer
     container_name: consumer
     depends_on:
-      - kafka
+      - kafka1
+      - kafka2
     environment:
-      - KAFKA_BROKER=kafka:9092
+      - KAFKA_BROKER=kafka1:9092,kafka2:9093
 
   influxdb2:
     image: influxdb:2
@@ -99,6 +111,8 @@ services:
       - ./grafana-data:/var/lib/grafana
     depends_on:
       - influxdb2
+    environment:
+      - GF_INSTALL_PLUGINS=pr0ps-trackmap-panel
 
 secrets:
   influxdb2-admin-username:

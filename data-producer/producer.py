@@ -94,7 +94,7 @@ file = '/data-producer/gpx_files/FFM_Marathon_2024.gpx'
 
 if __name__ == "__main__":
     producer = KafkaProducer(
-         bootstrap_servers='kafka:9092',
+         bootstrap_servers=['kafka1:9092','kafka2:9093'],
          value_serializer=lambda v: json.dumps(v).encode('utf-8')
     )
     iterate_workout(producer, 'sensor-data', extract_gpx(file))
