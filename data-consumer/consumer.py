@@ -5,21 +5,22 @@ from influxdb_client.client.write_api import SYNCHRONOUS
 import json
 import time
 
+# setting credentials for InfluxDB
 bucket = "de-project"
 org = "my-org"
 token = "InitialAdminToken0=="
+url = "http://influxdb:8086"
 
-url = "localhost:8086"
-
+# establishing InfluxDB client and write API
 client = influxdb_client.InfluxDBClient(
-    url="http://influxdb:8086",
+    url=url,
     token=token,
     org=org
 )
-
 write_api = client.write_api(write_options=SYNCHRONOUS)
 
 def create_consumer(bootstrap_servers, retries=10, delay=5):
+    # trying to connect to the Kafka brokers until they are finally available
     for attempt in range(retries):
         try:
             consumer = KafkaConsumer(
@@ -36,9 +37,10 @@ def create_consumer(bootstrap_servers, retries=10, delay=5):
     raise Exception("Could not connect to Kafka broker after multiple retries.")
 
 def consume_and_process(consumer):
+    # each datapoint equals a message and gets loaded to InfluxDB
     for message in consumer:
         data = message.value
-        print(f"Processed datapoint: {data['timestamp']}")
+        print(f"Processed datapoint: {data['timestamp']}") # print for debugging and terminal info
         point = influxdb_client.Point("athlete_data") \
             .tag('event', 'Frankfurt_Marathon') \
             .field('longitude', float(data['longitude'])) \
