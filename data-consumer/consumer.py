@@ -1,7 +1,9 @@
 from kafka import KafkaConsumer
+from kafka.errors import NoBrokersAvailable
 import influxdb_client
 from influxdb_client.client.write_api import SYNCHRONOUS
 import json
+import time
 
 bucket = "de-project"
 org = "my-org"
@@ -17,17 +19,26 @@ client = influxdb_client.InfluxDBClient(
 
 write_api = client.write_api(write_options=SYNCHRONOUS)
 
-def consume_and_process():
-    consumer = KafkaConsumer(
-        'sensor-data',
-        bootstrap_servers=['kafka1:9092','kafka2:9093'],
-        auto_offset_reset='earliest',
-        value_deserializer=lambda m: json.loads(m.decode('utf-8'))
-    )
+def create_consumer(bootstrap_servers, retries=10, delay=5):
+    for attempt in range(retries):
+        try:
+            consumer = KafkaConsumer(
+                'sensor-data',
+                bootstrap_servers=bootstrap_servers,
+                auto_offset_reset='earliest',
+                value_deserializer=lambda m: json.loads(m.decode('utf-8'))
+            )
+            print("Connected to Kafka broker.")
+            return consumer
+        except NoBrokersAvailable:
+            print(f"Attempt {attempt + 1}/{retries}: Kafka broker not available. Retrying in {delay} seconds...")
+            time.sleep(delay)
+    raise Exception("Could not connect to Kafka broker after multiple retries.")
 
+def consume_and_process(consumer):
     for message in consumer:
         data = message.value
-        print(data['timestamp']+' '+data['longitude'])
+        print(f"Processed datapoint: {data['timestamp']}")
         point = influxdb_client.Point("athlete_data") \
             .tag('event', 'Frankfurt_Marathon') \
             .field('longitude', float(data['longitude'])) \
@@ -44,4 +55,5 @@ def consume_and_process():
         write_api.write(bucket=bucket, record=point)
 
 if __name__ == '__main__':
-    consume_and_process()
+    consumer = create_consumer(['kafka1:9092','kafka2:9093'])
+    consume_and_process(consumer)

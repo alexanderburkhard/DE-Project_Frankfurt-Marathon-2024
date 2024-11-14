@@ -1,5 +1,6 @@
 from lxml import etree
 from kafka import KafkaProducer
+from kafka.errors import NoBrokersAvailable
 from datetime import timedelta, date, datetime
 import time
 import json
@@ -90,11 +91,22 @@ def iterate_workout(producer, topic, data_points):
         producer.send(topic, value=data)
         producer.flush()
 
+def create_producer(bootstrap_servers, retries=10, delay=5):
+    for attempt in range(retries):
+        try:
+            producer = KafkaProducer(
+                bootstrap_servers=bootstrap_servers,
+                value_serializer=lambda v: json.dumps(v).encode('utf-8')
+            )
+            print("Connected to Kafka broker.")
+            return producer
+        except NoBrokersAvailable:
+            print(f"Attempt {attempt + 1}/{retries}: Kafka broker not available. Retrying in {delay} seconds...")
+            time.sleep(delay)
+    raise Exception("Could not connect to Kafka broker after multiple retries.")
+
 file = '/data-producer/gpx_files/FFM_Marathon_2024.gpx'
 
 if __name__ == "__main__":
-    producer = KafkaProducer(
-         bootstrap_servers=['kafka1:9092','kafka2:9093'],
-         value_serializer=lambda v: json.dumps(v).encode('utf-8')
-    )
+    producer = create_producer(['kafka1:9092','kafka2:9093'])
     iterate_workout(producer, 'sensor-data', extract_gpx(file))
