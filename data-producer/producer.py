@@ -51,6 +51,8 @@ def iterate_workout(producer, topic, data_points):
     speed_rolling = []
     speed_current = 0
 
+    iteration_factor = 20
+
     hr_avg = 0
     
     time_passed = 0
@@ -61,7 +63,7 @@ def iterate_workout(producer, topic, data_points):
         current_geo = (data['latitude'], data['longitude'])
         if prev_timestamp is not None:
             sleep_time = (current_timestamp - prev_timestamp).total_seconds() 
-            time.sleep(max(sleep_time/20, 0)) # speeding up the iteration by factor 20 for demonstration purposes
+            time.sleep(max(sleep_time/iteration_factor, 0)) # speeding up the iteration by factor 20 for demonstration purposes
 
         if prev_geo is not None:
             # getting distance between datapoints in km
